@@ -129,11 +129,14 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
             }
         }
 
-        let name = entries.get("name").unwrap();
+        let name = entries
+            .remove("name")
+            .unwrap_or_else(|| field_name.as_ref().unwrap().to_string());
         let name = format!("{namespace}_{name}");
-        let help = entries.get("help");
-        let init = entries.get("init");
-        let set = entries.get("set");
+
+        let help = entries.remove("help");
+        let init = entries.remove("init");
+        let set = entries.remove("set");
 
         let field_type = add_generic_stuff(field_type);
 
