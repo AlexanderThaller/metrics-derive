@@ -1,3 +1,8 @@
+#![forbid(unsafe_code)]
+#![warn(clippy::pedantic)]
+//#![warn(clippy::unwrap_used)]
+#![warn(rust_2018_idioms, unused_lifetimes, missing_debug_implementations)]
+
 use std::collections::HashMap;
 
 use proc_macro::TokenStream;
@@ -12,8 +17,9 @@ use syn::{
     Type,
 };
 
-extern crate proc_macro;
-
+/// # Panics
+/// TODO
+#[allow(clippy::too_many_lines)]
 #[proc_macro_derive(Metrics, attributes(metrics))]
 pub fn my_derive(input: TokenStream) -> TokenStream {
     let parsed = parse_macro_input!(input as syn::DeriveInput);
@@ -44,7 +50,7 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
 
                         if let TokenTree::Ident(ref ident) = token {
                             if ident == "namespace" {
-                                found = true
+                                found = true;
                             }
                         }
                     }
@@ -90,9 +96,9 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                     match token {
                         TokenTree::Ident(ref ident) => {
                             if field.is_none() {
-                                field = Some(ident.to_string())
+                                field = Some(ident.to_string());
                             } else {
-                                section = Some(ident.to_string())
+                                section = Some(ident.to_string());
                             }
                         }
 
@@ -110,14 +116,14 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                             value.push_str(&group.to_string());
 
                             if let Some(f) = field {
-                                entries.insert(f, value.to_owned());
+                                entries.insert(f, value.clone());
                                 field = None;
                             }
 
                             section = None;
                         }
 
-                        _ => {}
+                        TokenTree::Punct(_) => {}
                     }
                 }
             }
@@ -159,7 +165,7 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
 
     let tokens = quote! {
         impl #name {
-            fn register(registry: &mut prometheus_client::registry::Registry) -> Self {
+            pub fn register(registry: &mut prometheus_client::registry::Registry) -> Self {
                 #(#metrics_fields)*
 
                 Self {

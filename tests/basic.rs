@@ -1,7 +1,6 @@
 use metrics_derive::Metrics;
 use prometheus_client::metrics::{
     counter::Counter,
-    family::Family,
     gauge::Gauge,
 };
 
