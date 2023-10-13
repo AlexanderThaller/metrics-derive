@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
 use proc_macro::TokenStream;
-use proc_macro2::{
-    Ident,
-    TokenTree,
+use proc_macro2::TokenTree;
+use quote::{
+    format_ident,
+    quote,
+    ToTokens,
 };
-use quote::quote;
 use syn::{
     parse_macro_input,
     Meta,
-    MetaList,
-    MetaNameValue,
+    PathArguments,
+    Type,
 };
 
 extern crate proc_macro;
@@ -114,6 +115,10 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         let name = entries.get("name");
         let help = entries.get("help");
 
+        dbg!(&field_type);
+
+        let field_type = add_generic_stuff(field_type);
+
         quote! {
             let #field_name = #field_type::default();
             registry.register(#name, #help, #field_name.clone());
@@ -133,4 +138,27 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(tokens)
+}
+
+fn add_generic_stuff(field_type: &Type) -> Type {
+    if !field_type.to_token_stream().to_string().contains('<') {
+        return field_type.clone();
+    }
+
+    if let Type::Path(type_path) = field_type {
+        let segment = &type_path.path.segments.last().unwrap();
+        let ident = &segment.ident;
+        let generics = &segment.arguments;
+
+        dbg!(&ident);
+        dbg!(&generics);
+
+        let ts = quote! {
+            #ident::#generics
+        };
+
+        syn::parse2(ts).unwrap()
+    } else {
+        field_type.clone()
+    }
 }
