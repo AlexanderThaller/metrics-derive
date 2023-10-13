@@ -3,14 +3,12 @@ use std::collections::HashMap;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{
-    format_ident,
     quote,
     ToTokens,
 };
 use syn::{
     parse_macro_input,
     Meta,
-    PathArguments,
     Type,
 };
 
@@ -20,8 +18,6 @@ extern crate proc_macro;
 pub fn my_derive(input: TokenStream) -> TokenStream {
     let parsed = parse_macro_input!(input as syn::DeriveInput);
 
-    dbg!(&parsed);
-
     let name = parsed.ident;
 
     let namespace: String = parsed
@@ -29,8 +25,6 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         .iter()
         .find_map(|attr| {
             if attr.meta.path().is_ident("metrics") {
-                dbg!(attr);
-
                 if let Meta::List(ref list) = attr.meta {
                     let mut found = false;
                     let mut skipped = false;
@@ -61,8 +55,6 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         })
         .unwrap_or(name.to_string().to_lowercase());
 
-    dbg!(&namespace);
-
     let fields = match parsed.data {
         syn::Data::Struct(data) => match data.fields {
             syn::Fields::Named(named) => named.named,
@@ -92,10 +84,17 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
 
             if let Meta::List(ref list) = attr.meta {
                 let mut field = None;
+                let mut section = None;
 
                 for token in list.tokens.clone() {
                     match token {
-                        TokenTree::Ident(ref ident) => field = Some(ident.to_string()),
+                        TokenTree::Ident(ref ident) => {
+                            if field.is_none() {
+                                field = Some(ident.to_string())
+                            } else {
+                                section = Some(ident.to_string())
+                            }
+                        }
 
                         TokenTree::Literal(lit) => {
                             let value = lit.to_string();
@@ -106,22 +105,55 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                             }
                         }
 
+                        TokenTree::Group(group) => {
+                            let mut value = section.unwrap().to_string();
+                            value.push_str(&group.to_string());
+
+                            if let Some(f) = field {
+                                entries.insert(f, value.to_owned());
+                                field = None;
+                            }
+
+                            section = None;
+                        }
+
                         _ => {}
                     }
                 }
             }
         }
 
-        let name = entries.get("name");
+        let name = entries.get("name").unwrap();
+        let name = format!("{namespace}_{name}");
         let help = entries.get("help");
-
-        dbg!(&field_type);
+        let init = entries.get("init");
+        let set = entries.get("set");
 
         let field_type = add_generic_stuff(field_type);
 
-        quote! {
-            let #field_name = #field_type::default();
-            registry.register(#name, #help, #field_name.clone());
+        if let Some(init) = init {
+            let init: proc_macro2::TokenStream = init
+                .parse()
+                .expect("Failed to parse string into TokenStream");
+
+            let set: proc_macro2::TokenStream = if let Some(set) = set {
+                set.parse()
+                    .expect("Failed to parse string into TokenStream")
+            } else {
+                "1".parse()
+                    .expect("Failed to parse string into TokenStream")
+            };
+
+            quote! {
+                let #field_name = #field_type::default();
+                registry.register(#name, #help, #field_name.clone());
+                #field_name.get_or_create(&#init).set(#set);
+            }
+        } else {
+            quote! {
+                let #field_name = #field_type::default();
+                registry.register(#name, #help, #field_name.clone());
+            }
         }
     });
 
@@ -149,9 +181,6 @@ fn add_generic_stuff(field_type: &Type) -> Type {
         let segment = &type_path.path.segments.last().unwrap();
         let ident = &segment.ident;
         let generics = &segment.arguments;
-
-        dbg!(&ident);
-        dbg!(&generics);
 
         let ts = quote! {
             #ident::#generics
