@@ -137,8 +137,29 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         let help = entries.remove("help");
         let init = entries.remove("init");
         let set = entries.remove("set");
+        let buckets = entries.remove("buckets");
+
+        let metric_type = field_type.to_token_stream().to_string();
 
         let field_type = add_generic_stuff(field_type);
+
+        let init_function = if metric_type.contains("Histogram") {
+            let buckets = if let Some(b) = buckets {
+                format!("[{b}]")
+            } else {
+                "[0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]".to_string()
+            };
+
+            let buckets: proc_macro2::TokenStream = buckets
+                .parse()
+                .expect("Failed to parse string into TokenStream");
+
+            quote! {
+                #field_type::new(#buckets.into_iter())
+            }
+        } else {
+            quote! { #field_type::default() }
+        };
 
         if let Some(init) = init {
             let init: proc_macro2::TokenStream = init
@@ -154,13 +175,13 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
             };
 
             quote! {
-                let #field_name = #field_type::default();
+                let #field_name = #init_function;
                 registry.register(#name, #help, #field_name.clone());
                 #field_name.get_or_create(&#init).set(#set);
             }
         } else {
             quote! {
-                let #field_name = #field_type::default();
+                let #field_name = #init_function;
                 registry.register(#name, #help, #field_name.clone());
             }
         }

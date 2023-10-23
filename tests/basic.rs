@@ -2,6 +2,7 @@ use metrics_derive::Metrics;
 use prometheus_client::metrics::{
     counter::Counter,
     gauge::Gauge,
+    histogram::Histogram,
 };
 
 #[allow(dead_code)]
@@ -13,6 +14,13 @@ pub struct MyCustomMetric {
 
     #[metrics(name = "requests", help = "Number of requests handled")]
     requests: Counter,
+
+    #[metrics(
+        name = "latency",
+        help = "Latency of requests",
+        buckets = "0.5, 0.9, 0.99"
+    )]
+    latency: Histogram,
 }
 
 #[allow(dead_code)]
