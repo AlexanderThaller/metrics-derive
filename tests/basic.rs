@@ -1,8 +1,12 @@
 use metrics_derive::Metrics;
-use prometheus_client::metrics::{
-    counter::Counter,
-    gauge::Gauge,
-    histogram::Histogram,
+use prometheus_client::{
+    encoding::EncodeLabelSet,
+    metrics::{
+        counter::Counter,
+        family::Family,
+        gauge::Gauge,
+        histogram::Histogram,
+    },
 };
 
 #[allow(dead_code)]

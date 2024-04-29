@@ -14,4 +14,4 @@ quote = "1"
 syn = { version = "2", features = ["extra-traits"] }
 
 [dev-dependencies]
-prometheus-client = "0.20"
+prometheus-client = "0.22"

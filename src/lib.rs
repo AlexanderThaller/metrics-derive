@@ -143,6 +143,27 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
 
         let field_type = add_generic_stuff(field_type);
 
+        // if let Type::Path(type_path) = &field_type {
+        //    let segment = &type_path.path.segments.last().unwrap();
+        //    let ident = &segment.ident;
+        //    let generics = &segment.arguments;
+
+        //    if ident == "Family" {
+        //        if let PathArguments::AngleBracketed(args) = generics {
+        //            if let GenericArgument::Type(g_type) = args.args.last().unwrap() {
+        //                if let Type::Path(type_path) = g_type {
+        //                    let segment = &type_path.path.segments.last().unwrap();
+        //                    let ident = &segment.ident;
+
+        //                    if ident == "Histogram" {
+        //                        todo!()
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
         let init_function = if metric_type.contains("Histogram") {
             let buckets = if let Some(b) = buckets {
                 format!("[{b}]")
@@ -154,8 +175,16 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                 .parse()
                 .expect("Failed to parse string into TokenStream");
 
-            quote! {
-                #field_type::new(#buckets.into_iter())
+            if metric_type.contains("Family") {
+                quote! {
+                    #field_type::new_with_constructor(|| {
+                        Histogram::new(#buckets.into_iter())
+                    });
+                }
+            } else {
+                quote! {
+                    #field_type::new(#buckets.into_iter())
+                }
             }
         } else {
             quote! { #field_type::default() }
