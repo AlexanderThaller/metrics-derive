@@ -218,6 +218,7 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
 
     let tokens = quote! {
         impl #name {
+            #[must_use]
             pub fn register(registry: &mut prometheus_client::registry::Registry) -> Self {
                 #(#metrics_fields)*
 
