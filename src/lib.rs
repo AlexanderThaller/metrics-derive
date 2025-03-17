@@ -8,13 +8,13 @@ use std::collections::HashMap;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{
-    quote,
     ToTokens,
+    quote,
 };
 use syn::{
-    parse_macro_input,
     Meta,
     Type,
+    parse_macro_input,
 };
 
 /// # Panics
@@ -60,6 +60,37 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
             None
         })
         .unwrap_or(name.to_string().to_lowercase());
+
+    let prefix: Option<String> = parsed.attrs.iter().find_map(|attr| {
+        if attr.meta.path().is_ident("metrics") {
+            if let Meta::List(ref list) = attr.meta {
+                let mut found = false;
+                let mut skipped = false;
+                for token in list.tokens.clone() {
+                    if found && !skipped {
+                        skipped = true;
+                        continue;
+                    }
+
+                    if found && skipped {
+                        if let TokenTree::Literal(lit) = token {
+                            let namespace = lit.to_string();
+                            let namespace = namespace.trim_matches('"');
+                            return Some(namespace.to_string());
+                        }
+                    }
+
+                    if let TokenTree::Ident(ref ident) = token {
+                        if ident == "prefix" {
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    });
 
     let fields = match parsed.data {
         syn::Data::Struct(data) => match data.fields {
@@ -132,7 +163,12 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         let name = entries
             .remove("name")
             .unwrap_or_else(|| field_name.as_ref().unwrap().to_string());
-        let name = format!("{namespace}_{name}");
+
+        let name = if let Some(prefix) = &prefix {
+            format!("{namespace}_{prefix}_{name}")
+        } else {
+            format!("{namespace}_{name}")
+        };
 
         let help = entries.remove("help");
         let init = entries.remove("init");
