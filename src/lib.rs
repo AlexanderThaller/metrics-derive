@@ -1,8 +1,3 @@
-#![forbid(unsafe_code)]
-#![warn(clippy::pedantic)]
-//#![warn(clippy::unwrap_used)]
-#![warn(rust_2018_idioms, unused_lifetimes, missing_debug_implementations)]
-
 use std::collections::HashMap;
 
 use proc_macro::TokenStream;
@@ -19,7 +14,12 @@ use syn::{
 
 /// # Panics
 /// TODO
-#[allow(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "This function is long because it has to handle a lot of different cases. \
+              Refactoring it into smaller functions would make it less readable and harder to \
+              understand."
+)]
 #[proc_macro_derive(Metrics, attributes(metrics))]
 pub fn my_derive(input: TokenStream) -> TokenStream {
     let parsed = parse_macro_input!(input as syn::DeriveInput);
@@ -145,7 +145,9 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                         }
 
                         TokenTree::Group(group) => {
-                            let mut value = section.unwrap().clone();
+                            let mut value = section
+                                .expect("failed to get section this should never happen")
+                                .clone();
                             value.push_str(&group.to_string());
 
                             if let Some(f) = field {
@@ -162,9 +164,12 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
             }
         }
 
-        let name = entries
-            .remove("name")
-            .unwrap_or_else(|| field_name.as_ref().unwrap().to_string());
+        let name = entries.remove("name").unwrap_or_else(|| {
+            field_name
+                .as_ref()
+                .expect("failed to get field_name this should never happen")
+                .to_string()
+        });
 
         let name = if let Some(prefix) = &prefix {
             format!("{namespace}_{prefix}_{name}")
@@ -276,7 +281,12 @@ fn add_generic_stuff(field_type: &Type) -> Type {
     }
 
     if let Type::Path(type_path) = field_type {
-        let segment = &type_path.path.segments.last().unwrap();
+        let segment = &type_path
+            .path
+            .segments
+            .last()
+            .expect("failed to get last segment this should never happen");
+
         let ident = &segment.ident;
         let generics = &segment.arguments;
 
@@ -284,7 +294,7 @@ fn add_generic_stuff(field_type: &Type) -> Type {
             #ident::#generics
         };
 
-        syn::parse2(ts).unwrap()
+        syn::parse2(ts).expect("failed to parse token stream into type this should never happen")
     } else {
         field_type.clone()
     }
