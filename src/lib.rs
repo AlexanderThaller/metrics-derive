@@ -30,29 +30,30 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         .attrs
         .iter()
         .find_map(|attr| {
-            if attr.meta.path().is_ident("metrics") {
-                if let Meta::List(ref list) = attr.meta {
-                    let mut found = false;
-                    let mut skipped = false;
-                    for token in list.tokens.clone() {
-                        if found && !skipped {
-                            skipped = true;
-                            continue;
-                        }
+            if attr.meta.path().is_ident("metrics")
+                && let Meta::List(ref list) = attr.meta
+            {
+                let mut found = false;
+                let mut skipped = false;
+                for token in list.tokens.clone() {
+                    if found && !skipped {
+                        skipped = true;
+                        continue;
+                    }
 
-                        if found && skipped {
-                            if let TokenTree::Literal(lit) = token {
-                                let namespace = lit.to_string();
-                                let namespace = namespace.trim_matches('"');
-                                return Some(namespace.to_string());
-                            }
-                        }
+                    if found
+                        && skipped
+                        && let TokenTree::Literal(lit) = token
+                    {
+                        let namespace = lit.to_string();
+                        let namespace = namespace.trim_matches('"');
+                        return Some(namespace.to_string());
+                    }
 
-                        if let TokenTree::Ident(ref ident) = token {
-                            if ident == "namespace" {
-                                found = true;
-                            }
-                        }
+                    if let TokenTree::Ident(ref ident) = token
+                        && ident == "namespace"
+                    {
+                        found = true;
                     }
                 }
             }
@@ -62,29 +63,30 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
         .unwrap_or(name.to_string().to_lowercase());
 
     let prefix: Option<String> = parsed.attrs.iter().find_map(|attr| {
-        if attr.meta.path().is_ident("metrics") {
-            if let Meta::List(ref list) = attr.meta {
-                let mut found = false;
-                let mut skipped = false;
-                for token in list.tokens.clone() {
-                    if found && !skipped {
-                        skipped = true;
-                        continue;
-                    }
+        if attr.meta.path().is_ident("metrics")
+            && let Meta::List(ref list) = attr.meta
+        {
+            let mut found = false;
+            let mut skipped = false;
+            for token in list.tokens.clone() {
+                if found && !skipped {
+                    skipped = true;
+                    continue;
+                }
 
-                    if found && skipped {
-                        if let TokenTree::Literal(lit) = token {
-                            let namespace = lit.to_string();
-                            let namespace = namespace.trim_matches('"');
-                            return Some(namespace.to_string());
-                        }
-                    }
+                if found
+                    && skipped
+                    && let TokenTree::Literal(lit) = token
+                {
+                    let namespace = lit.to_string();
+                    let namespace = namespace.trim_matches('"');
+                    return Some(namespace.to_string());
+                }
 
-                    if let TokenTree::Ident(ref ident) = token {
-                        if ident == "prefix" {
-                            found = true;
-                        }
-                    }
+                if let TokenTree::Ident(ref ident) = token
+                    && ident == "prefix"
+                {
+                    found = true;
                 }
             }
         }
@@ -143,7 +145,7 @@ pub fn my_derive(input: TokenStream) -> TokenStream {
                         }
 
                         TokenTree::Group(group) => {
-                            let mut value = section.unwrap().to_string();
+                            let mut value = section.unwrap().clone();
                             value.push_str(&group.to_string());
 
                             if let Some(f) = field {
